@@ -1,0 +1,619 @@
+import datetime
+import re
+from typing import Any, Dict, List
+from sqlalchemy import insert, select
+from app.db.session import get_sessionmaker
+from app.models.models import SeoKeywordsTrending, SeoOutcomes, SeoTitle
+
+
+async def insert_high_priority_tasks(priority_data: dict | str) -> dict:
+    """Insert high priority SEO tasks into seo_high_priority table.
+
+    Input: Dict from analyze_high_priority_tasks or JSON string
+    Process:
+        - Parse priority_data for high_priority_tasks list
+        - Link to existing seo_outcomes records where possible
+        - Insert into seo_high_priority table
+    Output: {"status": "success|error", "tasks_inserted": int}
+    """
+    import json
+    from app.models.models import SeoHighPriority
+    
+    if isinstance(priority_data, str):
+        try:
+            # Fix Python boolean format to JSON format before parsing
+            priority_data = priority_data.replace('True', 'true').replace('False', 'false')
+            priority_data = json.loads(priority_data)
+        except json.JSONDecodeError as e:
+            return {
+                "status": "error", 
+                "message": f"Invalid JSON string: {str(e)}", 
+                "received_data": priority_data[:500] + "..." if len(priority_data) > 500 else priority_data
+            }
+    
+    tasks = priority_data.get("high_priority_tasks", [])
+    if not tasks:
+        return {"status": "no_data", "tasks_inserted": 0, "message": "No high priority tasks to insert"}
+    
+    SessionLocal = get_sessionmaker()
+    async with SessionLocal() as session:
+        try:
+            now = datetime.now()  # Declare now at the beginning
+            
+            # First, get existing seo_outcomes to link via Outcome_Id
+            outcomes_result = await session.execute(select(SeoOutcomes))
+            existing_outcomes = {outcome.Page_Url: outcome.id for outcome in outcomes_result.scalars().all()}
+
+            # For tasks without existing seo_outcomes, create placeholder records first
+            missing_outcomes = []
+            for task in tasks:
+                page_url = task.get("Page_Url")
+                if page_url not in existing_outcomes:
+                    # Create a placeholder seo_outcomes record
+                    placeholder_data = {
+                        "Page_Url": page_url,
+                        "Original_Title": page_url,  # Use page URL as title placeholder
+                        "Improved_Title": None,
+                        "Rationale": "High priority task identified - needs SEO optimization",
+                        "Improvement_Score": None,
+                        "Issues_Found": "High priority task",
+                        "Recommendations": "Requires immediate SEO attention",
+                        "Health_Score": None,
+                        "Created_At": now,
+                        "Updated_At": now
+                    }
+                    missing_outcomes.append(placeholder_data)
+            
+            # Insert placeholder seo_outcomes records if needed
+            if missing_outcomes:
+                result = await session.execute(insert(SeoOutcomes), missing_outcomes)
+                await session.commit()
+                
+                # Refresh existing_outcomes mapping with new records
+                outcomes_result = await session.execute(select(SeoOutcomes))
+                existing_outcomes = {outcome.Page_Url: outcome.id for outcome in outcomes_result.scalars().all()}
+
+            rows = []
+            
+            for task in tasks:
+                page_url = task.get("Page_Url")
+                outcome_id = existing_outcomes.get(page_url)  # Should always exist now
+                
+                if outcome_id is None:
+                    continue  # Skip if somehow still no outcome_id
+                
+                # Handle trigger_details - convert to JSON string if it's not already
+                trigger_details = task.get("Trigger_Details", "")
+                if isinstance(trigger_details, dict):
+                    trigger_details = json.dumps(trigger_details)
+
+                rows.append({
+                    "Outcome_Id": outcome_id,
+                    "Page_Url": page_url,
+                    "Is_Outdated_Year": task.get("Is_Outdated_Year", False),
+                    "Is_Very_Low_Score": task.get("Is_Very_Low_Score", False), 
+                    "Is_Critical_Page": task.get("Is_Critical_Page", False),
+                    "Priority_Score": task.get("Priority_Score", 70),
+                    "Priority_Level": task.get("Priority_Level", "high"),
+                    "Status": task.get("Status", "pending"),
+                    "Trigger_Details": trigger_details,
+                    "Last_Evaluated": now,
+                    "Created_At": now,
+                    "Updated_At": now
+                })
+
+            # Insert high priority records
+            if rows:
+                await session.execute(insert(SeoHighPriority), rows)
+            await session.commit()
+            return {"status": "success", "tasks_inserted": len(rows)}
+            
+        except Exception as e:
+            await session.rollback()
+            return {"status": "error", "message": f"Insert failed: {str(e)}"}
+        finally:
+            await session.close()
+
+
+async def update_trending_keywords_db(agent_output: dict) -> dict:
+    """Persist structured TrendingKeywordBatch data into `seo_trending_keywords_generated`.
+
+    Expected Input:
+        {
+            "trending_keywords": [
+                {
+                    "Category": str,
+                    "Keyword": str,
+                    "Search_Intent": str | None,
+                    "Trend_Score": float | None,
+                    "Keyword_Type": str | None,
+                    "Geo_Focus": str | None,
+                    "Rationale": str | None,
+                    "Platform_Source": str,
+                    "Status": str,
+                    "Created_At": datetime,
+                    "Updated_At": datetime
+                }
+            ],
+            "summary": {...},               # optional
+            "categories_analyzed": [...]    # optional
+        }
+
+    Returns:
+        {"status": "success", "rows_inserted": int}
+        or {"status": "no_data", "rows_inserted": 0, "message": str}
+        or {"status": "error", "message": str}
+    """
+
+    if not isinstance(agent_output, dict):
+        return {"status": "error", "message": "Input must be a structured dict"}
+
+    keywords = agent_output.get("trending_keywords", [])
+    if not keywords:
+        return {"status": "no_data", "rows_inserted": 0, "message": "No keywords provided"}
+    SessionLocal = get_sessionmaker()
+    async with SessionLocal() as session:
+        try:
+            now = datetime.utcnow()
+            rows = []
+            for kw in keywords:
+                rows.append({
+                    "Category": kw.get("Category", "General"),
+                    "Keyword": kw.get("Keyword"),
+                    "Search_Intent": kw.get("Search_Intent"),
+                    "Trend_Score": kw.get("Trend_Score"),
+                    "Keyword_Type": kw.get("Keyword_Type"),
+                    "Geo_Focus": kw.get("Geo_Focus"),
+                    "Rationale": kw.get("Rationale"),
+                    "Platform_Source": kw.get("Platform_Source", "AI_Generated"),
+                    "Status": kw.get("Status", "pending"),
+                    "Created_At": kw.get("Created_At", now),
+                    "Updated_At": kw.get("Updated_At", now),
+                })
+
+            await session.execute(insert(SeoKeywordsTrending), rows)
+            await session.commit()
+            return {"status": "success", "rows_inserted": len(rows)}
+        except Exception as e:
+            await session.rollback()
+            return {"status": "error", "message": str(e)}
+        finally:
+            await session.close()
+
+
+async def update_seo_outcomes_db(agent_output: dict) -> dict:
+    """Persist structured SEOOutcomeBatch data into `seo_outcomes`.
+
+    Expected Input:
+        {
+            "updates": [
+                {
+                    "Page_Url": str,
+                    "Original_Title": str | None,
+                    "Improved_Title": str | None,
+                    "Rationale": str | None,
+                    "Improvement_Score": float | None,
+                    "Issues_Found": str | None,
+                    "Recommendations": str | None,
+                    "Health_Score": float | None,
+                    "Created_At": datetime,
+                    "Updated_At": datetime
+                }
+            ],
+            "summary": {...}  # optional
+        }
+
+    Returns:
+        {"status": "success", "rows_inserted": int}
+        or {"status": "no_data", "rows_inserted": 0, "message": str}
+        or {"status": "error", "message": str}
+    """
+  
+    SessionLocal = get_sessionmaker()
+
+    if not isinstance(agent_output, dict):
+        return {"status": "error", "message": "Input must be a structured dict"}
+
+    updates = agent_output.get("updates", [])
+    if not updates:
+        return {"status": "no_data", "rows_inserted": 0, "message": "No updates provided"}
+
+    async with SessionLocal() as session:
+        try:
+            now = datetime.utcnow()
+            rows = []
+            for upd in updates:
+                rows.append({
+                    "Page_Url": upd.get("Page_Url", "N/A"),
+                    "Original_Title": upd.get("Original_Title"),
+                    "Improved_Title": upd.get("Improved_Title"),
+                    "Rationale": upd.get("Rationale"),
+                    "Improvement_Score": upd.get("Improvement_Score"),
+                    "Issues_Found": upd.get("Issues_Found"),
+                    "Recommendations": upd.get("Recommendations"),
+                    "Health_Score": upd.get("Health_Score"),
+                    "Created_At": upd.get("Created_At", now),
+                    "Updated_At": upd.get("Updated_At", now),
+                })
+
+            await session.execute(insert(SeoOutcomes), rows)
+            await session.commit()
+            return {"status": "success", "rows_inserted": len(rows)}
+        except Exception as e:
+            await session.rollback()
+            return {"status": "error", "message": str(e)}
+        finally:
+            await session.close()
+
+
+async def metadata_validator() -> Dict[str, Any]:
+    """Validate quality/freshness of both SEO titles AND keywords.
+
+        Input: (ignored) – kept for agent tool signature compatibility.
+        
+        TITLE VALIDATION RULES:
+            - Incomplete: missing or <10 chars.
+            - Unnormalized: all upper/lower or repeated punctuation.
+            - Outdated: last updated year < current_year - 1.
+        
+        KEYWORD VALIDATION RULES:
+            - Stale Keywords: updated >6 months ago
+            - Low Score Keywords: trend_score < 50
+            - Missing Intent: search_intent is null/empty
+            - Declining Trends: trend_status = 'Declining'
+        
+        Health Score: 100 - (total_issue_count * 100 // total_records).
+        
+        Output:
+            {
+                "source": "mysql",
+                "titles": {total_rows, issues, details},
+                "keywords": {total_rows, issues, details}, 
+                "summary": {total_issues, combined_health_score},
+                "improvements_needed": {title_improvements: [...], keyword_improvements: [...]}
+            }
+        """
+    try:
+        SessionLocal = get_sessionmaker()
+        async with SessionLocal() as session:
+            # Get SEO Titles
+            titles_res = await session.execute(select(SeoTitle))
+            title_rows = titles_res.scalars().all()
+            
+            # Get SEO Keywords
+            keywords_res = await session.execute(select(SeoKeywordsTrending))
+            keyword_rows = keywords_res.scalars().all()
+
+        current_year = datetime.now().year
+        current_date = datetime.now()
+        
+        # TITLE VALIDATION
+        title_incomplete: List[Dict[str, Any]] = []
+        title_unnormalized: List[Dict[str, Any]] = []
+        title_outdated: List[Dict[str, Any]] = []
+        titles_need_improvement: List[str] = []
+
+        for idx, row in enumerate(title_rows):
+            title = row.SEO_Optimized_Title or ""
+            last_updated = row.Last_Updated
+
+            if not title or len(title.strip()) < 10:
+                title_incomplete.append({
+                    "row": idx + 1,
+                    "page_url": row.Page_Url,
+                    "title": title[:50] if title else "EMPTY",
+                    "issue": "Too short or missing"
+                })
+                titles_need_improvement.append(title if title else row.Page_Url)
+
+            if title and (title.isupper() or title.islower() or re.search(r'[!@#$%^&*()]{2,}', title)):
+                title_unnormalized.append({
+                    "row": idx + 1,
+                    "page_url": row.Page_Url,
+                    "title": title[:50],
+                    "issue": "Poor formatting"
+                })
+                titles_need_improvement.append(title)
+
+            if last_updated:
+                try:
+                    if last_updated.year < current_year - 1:
+                        title_outdated.append({
+                            "row": idx + 1,
+                            "page_url": row.Page_Url,
+                            "title": title[:50],
+                            "last_updated": last_updated.isoformat(),
+                            "issue": f"Outdated (from {last_updated.year})"
+                        })
+                        titles_need_improvement.append(title)
+                except Exception:
+                    pass
+
+        # KEYWORD VALIDATION
+        keyword_stale: List[Dict[str, Any]] = []
+        keyword_low_score: List[Dict[str, Any]] = []
+        keyword_missing_intent: List[Dict[str, Any]] = []
+        keyword_declining: List[Dict[str, Any]] = []
+        keywords_need_improvement: List[str] = []
+
+        for idx, row in enumerate(keyword_rows):
+            keyword = row.Trending_Keyword or ""
+            trend_score = row.Trend_Score or 0
+            search_intent = row.Search_Intent or ""
+            trend_status = row.Trend_Status or ""
+            updated_at = row.Updated_At
+            category = row.Category or "Unknown"
+
+            # Stale keywords (>6 months old)
+            if updated_at:
+                try:
+                    months_old = (current_date - updated_at).days / 30
+                    if months_old > 6:
+                        keyword_stale.append({
+                            "row": idx + 1,
+                            "keyword": keyword,
+                            "category": category,
+                            "months_old": round(months_old, 1),
+                            "issue": "Stale data (>6 months)"
+                        })
+                        keywords_need_improvement.append(category)
+                except Exception:
+                    pass
+
+            # Low trend score
+            if trend_score < 50:
+                keyword_low_score.append({
+                    "row": idx + 1,
+                    "keyword": keyword,
+                    "category": category,
+                    "trend_score": trend_score,
+                    "issue": "Low trend score"
+                })
+                keywords_need_improvement.append(category)
+
+            # Missing search intent
+            if not search_intent.strip():
+                keyword_missing_intent.append({
+                    "row": idx + 1,
+                    "keyword": keyword,
+                    "category": category,
+                    "issue": "Missing search intent"
+                })
+                keywords_need_improvement.append(category)
+
+            # Declining trends
+            if trend_status.lower() == 'declining':
+                keyword_declining.append({
+                    "row": idx + 1,
+                    "keyword": keyword,
+                    "category": category,
+                    "trend_status": trend_status,
+                    "issue": "Declining trend"
+                })
+                keywords_need_improvement.append(category)
+
+        # Calculate health scores
+        title_issue_count = len(title_incomplete) + len(title_unnormalized) + len(title_outdated)
+        keyword_issue_count = len(keyword_stale) + len(keyword_low_score) + len(keyword_missing_intent) + len(keyword_declining)
+        total_issues = title_issue_count + keyword_issue_count
+        total_records = len(title_rows) + len(keyword_rows)
+        
+        title_health = max(0, 100 - (title_issue_count * 100 // len(title_rows))) if title_rows else 0
+        keyword_health = max(0, 100 - (keyword_issue_count * 100 // len(keyword_rows))) if keyword_rows else 0
+        combined_health = max(0, 100 - (total_issues * 100 // total_records)) if total_records else 0
+
+        return {
+            "source": "mysql",
+            "titles": {
+                "total_rows": len(title_rows),
+                "issues": {
+                    "incomplete_count": len(title_incomplete),
+                    "unnormalized_count": len(title_unnormalized),
+                    "outdated_count": len(title_outdated),
+                    "total_issues": title_issue_count
+                },
+                "details": {
+                    "incomplete": title_incomplete[:5],
+                    "unnormalized": title_unnormalized[:5],
+                    "outdated": title_outdated[:5]
+                },
+                "health_score": title_health
+            },
+            "keywords": {
+                "total_rows": len(keyword_rows),
+                "issues": {
+                    "stale_count": len(keyword_stale),
+                    "low_score_count": len(keyword_low_score), 
+                    "missing_intent_count": len(keyword_missing_intent),
+                    "declining_count": len(keyword_declining),
+                    "total_issues": keyword_issue_count
+                },
+                "details": {
+                    "stale": keyword_stale[:5],
+                    "low_score": keyword_low_score[:5],
+                    "missing_intent": keyword_missing_intent[:5],
+                    "declining": keyword_declining[:5]
+                },
+                "health_score": keyword_health
+            },
+            "summary": {
+                "total_records": total_records,
+                "total_issues": total_issues,
+                "combined_health_score": combined_health,
+                "title_health": title_health,
+                "keyword_health": keyword_health
+            },
+            "improvements_needed": {
+                "title_improvements": list(set(titles_need_improvement))[:10],
+                "keyword_improvements": list(set(keywords_need_improvement))[:10]
+            }
+        }
+    except Exception as e:
+        return {"error": f"Validation failed: {str(e)}"}
+
+
+async def seo_flagging_catalyst() -> Dict[str, Any]:
+    """Flag SEO issues using titles + trend data.
+
+        Input: (ignored)
+        Flags produced:
+            - declining
+            - missing_trends
+            - outdated
+            - low_performing
+        Output includes summary counts, top 5 sample rows per flag, and recommendations.
+        """
+    try:
+        SessionLocal = get_sessionmaker()
+        async with SessionLocal() as session:
+            titles_res = await session.execute(select(SeoTitle))
+            titles = titles_res.scalars().all()
+            trends_res = await session.execute(select(SeoKeywordsTrending))
+            trends = trends_res.scalars().all()
+
+        declining_keywords = {t.Trending_Keyword.lower() for t in trends if (t.Trend_Status == 'Declining' and t.Trending_Keyword)}
+        positive_trends = [t for t in trends if t.Trend_Status in ['Emerging', 'Peaking', 'Rising']]
+
+        flagged = {"declining": [], "missing_trends": [], "outdated": [], "low_performing": []}
+        current_year = datetime.now().year
+
+        for idx, row in enumerate(titles):
+            title = row.SEO_Optimized_Title or ""
+            title_lower = title.lower()
+            primary_kw = (row.Primary_Keyword or "").lower()
+            last_updated = row.Last_Updated
+
+            # Declining keyword occurrences
+            found_declining = [kw for kw in declining_keywords if kw in title_lower]
+            if found_declining:
+                flagged["declining"].append({
+                    "row": idx + 1,
+                    "title": title[:60],
+                    "declining_keywords": found_declining
+                })
+
+            # Missing trends (category heuristic based on primary keyword first token)
+            if primary_kw:
+                category_word = primary_kw.split()[0] if primary_kw.split() else ''
+                if category_word and len(category_word) > 2:
+                    relevant = [tr for tr in positive_trends if (tr.Category or '').lower().find(category_word) != -1]
+                    missing = []
+                    for tr in relevant:
+                        trend_kw = (tr.Trending_Keyword or '').lower()
+                        if trend_kw and trend_kw not in title_lower:
+                            missing.append(trend_kw)
+                    if missing:
+                        flagged["missing_trends"].append({
+                            "row": idx + 1,
+                            "title": title[:60],
+                            "category": category_word,
+                            "missing_keywords": missing[:3]
+                        })
+
+            # Outdated
+            if last_updated:
+                try:
+                    if last_updated.year < current_year - 1:
+                        flagged["outdated"].append({
+                            "row": idx + 1,
+                            "title": title[:60],
+                            "last_updated": last_updated.isoformat(),
+                            "years_old": current_year - last_updated.year
+                        })
+                except Exception:
+                    pass
+
+            # Low performing
+            low_issues = []
+            if len(title) < 30:
+                low_issues.append("Too short")
+            if primary_kw and primary_kw not in title_lower:
+                low_issues.append("Missing primary keyword")
+            if low_issues:
+                flagged["low_performing"].append({
+                    "row": idx + 1,
+                    "title": title[:60],
+                    "issues": low_issues
+                })
+
+        total_issues = sum(len(v) for v in flagged.values())
+        return {
+            "analysis_complete": True,
+            "source": "mysql",
+            "summary": {
+                "total_rows_analyzed": len(titles),
+                "total_issues_found": total_issues,
+                "declining_count": len(flagged['declining']),
+                "missing_trends_count": len(flagged['missing_trends']),
+                "outdated_count": len(flagged['outdated']),
+                "low_performing_count": len(flagged['low_performing'])
+            },
+            "flagged_issues": {
+                "declining": flagged['declining'][:5],
+                "missing_trends": flagged['missing_trends'][:5],
+                "outdated": flagged['outdated'][:5],
+                "low_performing": flagged['low_performing'][:5]
+            },
+            "recommendations": {
+                "high_priority": f"Update {len(flagged['declining'])} titles with declining keywords",
+                "medium_priority": f"Add trending keywords to {len(flagged['missing_trends'])} titles",
+                "low_priority": f"Refresh {len(flagged['outdated'])} outdated titles"
+            }
+        }
+    except Exception as e:
+        return {"error": f"Flagging analysis failed: {str(e)}"}
+
+
+
+async def seo_db_stats() -> Dict[str, Any]:
+    """Get aggregate statistics about titles & keyword trends.
+
+        Input: None
+        Process:
+            1. Load all rows from `SeoTitle`.
+            2. Determine latest `Last_Updated` timestamp.
+            3. Load all rows from `SeoKeywordsTrending` & count by `Trend_Status`.
+            4. Derive declining count & positive (Emerging/Peaking/Rising) aggregate.
+        Output (dict):
+            {
+                "source": "mysql",
+                "total_titles": int,
+                "latest_title_update": str|None (ISO8601),
+                "trending_keywords_total": int,
+                "declining_trends": int,
+                "positive_trends": int,
+                "trend_status_breakdown": {status: count}
+            }
+        """
+    SessionLocal = get_sessionmaker()
+    async with SessionLocal() as session:
+        # Titles
+        titles_result = await session.execute(select(SeoTitle))
+        titles = titles_result.scalars().all()
+        total_titles = len(titles)
+        latest_update = None
+        if total_titles:
+            latest_update = max([t.Last_Updated for t in titles if t.Last_Updated])
+
+        # Trends
+        trends_result = await session.execute(select(SeoKeywordsTrending))
+        trends = trends_result.scalars().all()
+        status_counts: Dict[str, int] = {}
+        for tr in trends:
+            st = (tr.Trend_Status or "Unknown").strip()
+            status_counts[st] = status_counts.get(st, 0) + 1
+
+        declining = status_counts.get("Declining", 0)
+        positive = sum(status_counts.get(s, 0) for s in ["Emerging", "Peaking", "Rising"])
+
+        return {
+            "source": "mysql",
+            "total_titles": total_titles,
+            "latest_title_update": latest_update.isoformat() if latest_update else None,
+            "trending_keywords_total": len(trends),
+            "declining_trends": declining,
+            "positive_trends": positive,
+            "trend_status_breakdown": status_counts
+        }
+
+

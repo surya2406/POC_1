@@ -1,0 +1,101 @@
+Date,Category,Trending_Keyword,Trend_Score,Search_Intent,Keyword_Type,Platform_Source,Geo_Focus,Trend_Status
+2025-06-20,Bed Frame,bed frames with storage,58,Transactional,Non-Branded,Bing,Canada,Stable
+2025-06-18,TV Unit,trending TV unit styles,66,Informational,Branded,Google,India,Emerging
+2025-06-18,Office Chair,office chairs under 5000,61,Informational,Product-specific,Amazon,USA,Declining
+2025-06-14,Dining Table,affordable dining table styles,55,Transactional,Branded,Pinterest,Canada,Emerging
+2025-06-16,Bookshelf,bookshelf designs for kids,69,Transactional,Long-tail,Bing,Global,Stable
+2025-06-14,Running Shoes,top performance running shoes,87,Informational,Branded,YouTube,Canada,Declining
+2025-06-14,Bed Frame,budget-friendly modular furniture,84,Informational,Product-specific,Bing,India,Peaking
+2025-06-19,TV Unit,best TV unit designs,65,Informational,Product-specific,Bing,India,Stable
+2025-06-16,Running Shoes,running shoes under 3000,94,Informational,Branded,Google,USA,Peaking
+2025-06-16,Running Shoes,running shoes under 3000,69,Informational,Long-tail,Pinterest,USA,Emerging
+2025-06-19,Running Shoes,beginner running shoes,78,Navigational,Non-Branded,Bing,Global,Peaking
+2025-06-18,Running Shoes,lightweight running sneakers,82,Navigational,Non-Branded,YouTube,Canada,Stable
+2025-06-17,Sofa,sofa beds for studio apartments,85,Navigational,Product-specific,Google,India,Declining
+2025-06-16,Bed Frame,budget-friendly modular furniture,95,Informational,Product-specific,Pinterest,UK,Stable
+2025-06-16,Kitchen Cabinet,affordable kitchen solutions,84,Navigational,Long-tail,Pinterest,India,Peaking
+2025-06-14,TV Unit,floating TV units,88,Transactional,Product-specific,Pinterest,UK,Peaking
+2025-06-16,Bookshelf,bookshelf designs for kids,90,Informational,Branded,Bing,Canada,Stable
+2025-06-17,Kitchen Cabinet,affordable kitchen solutions,71,Navigational,Branded,Google,Global,Emerging
+2025-06-19,Sofa,sofa beds for studio apartments,56,Navigational,Product-specific,Google,UK,Emerging
+2025-06-15,TV Unit,trending TV unit styles,67,Informational,Branded,YouTube,Canada,Emerging
+2025-06-15,Bookshelf,minimalist bookshelf deals,88,Transactional,Long-tail,Google,USA,Declining
+2025-06-14,Sofa,sofa beds for studio apartments,98,Informational,Product-specific,Amazon,UK,Emerging
+2025-06-16,Bookshelf,minimalist bookshelf deals,90,Transactional,Product-specific,Google,Canada,Stable
+2025-06-20,Wardrobe,top wardrobe picks,56,Transactional,Branded,Google,Canada,Emerging
+2025-06-14,TV Unit,trending TV unit styles,96,Informational,Non-Branded,Google,India,Peaking
+2025-06-14,Water Bottle,eco-friendly water bottles,95,Navigational,Branded,YouTube,India,Peaking
+2025-06-15,Running Shoes,running shoes for gym and track,94,Navigational,Long-tail,Pinterest,UK,Peaking
+2025-06-15,Dining Table,dining table sets for 6-seaters,93,Informational,Branded,YouTube,Global,Stable
+2025-06-20,Dining Table,foldable dining table designs,58,Informational,Product-specific,Amazon,Canada,Emerging
+2025-06-16,Office Chair,office chairs under 5000,52,Navigational,Product-specific,YouTube,UK,Peaking
+2025-06-20,Office Chair,best ergonomic office chairs,85,Navigational,Product-specific,Amazon,USA,Emerging
+2025-06-19,TV Unit,trending TV unit styles,67,Navigational,Long-tail,Amazon,Canada,Peaking
+2025-06-19,TV Unit,TV units for small spaces,60,Transactional,Product-specific,Pinterest,UK,Stable
+2025-06-19,Sofa,latest modular sofa sets,96,Informational,Non-Branded,Google,Canada,Stable
+2025-06-17,Dining Table,top dining table trends,99,Navigational,Branded,Bing,Canada,Emerging
+2025-06-15,Bed Frame,best bed frame designs,91,Transactional,Product-specific,YouTube,India,Emerging
+2025-06-20,Running Shoes,top performance running shoes,66,Transactional,Product-specific,Bing,India,Declining
+2025-06-20,Wardrobe,mirror wardrobes for compact spaces,62,Navigational,Product-specific,Pinterest,India,Emerging
+2025-06-14,Office Chair,mesh-back office chairs,88,Navigational,Non-Branded,Bing,India,Emerging
+2025-06-14,Sofa,affordable sofa designs,66,Navigational,Long-tail,Pinterest,Global,Stable
+2025-06-17,Kitchen Cabinet,kitchen cabinet design trends,82,Navigational,Branded,Amazon,Global,Peaking
+2025-06-14,Wardrobe,affordable wardrobe ideas,80,Transactional,Branded,YouTube,India,Declining
+2025-06-15,Sofa,latest modular sofa sets,81,Transactional,Branded,Pinterest,Global,Declining
+2025-06-19,Bed Frame,top bed frame designs,96,Navigational,Long-tail,Google,Canada,Emerging
+2025-06-14,Kitchen Cabinet,latest kitchen cabinet styles,99,Navigational,Product-specific,Bing,UK,Declining
+2025-06-18,Bookshelf,top bookshelf picks,74,Informational,Non-Branded,Pinterest,Global,Emerging
+2025-06-20,Running Shoes,running shoes for gym and track,86,Transactional,Branded,Pinterest,India,Declining
+2025-06-16,Water Bottle,eco-friendly water bottles,82,Informational,Non-Branded,YouTube,Global,Stable
+2025-06-17,Running Shoes,running shoes for gym and track,87,Navigational,Long-tail,Bing,UK,Declining
+2025-06-14,Dining Table,dining table sets for 6-seaters,50,Navigational,Non-Branded,Google,USA,Peaking
+2025-06-18,Kitchen Cabinet,budget kitchen cabinet ideas,94,Navigational,Product-specific,Bing,Global,Peaking
+2025-06-15,TV Unit,TV units for small spaces,94,Informational,Branded,Google,Global,Peaking
+2025-06-19,Dining Table,top dining table trends,75,Navigational,Product-specific,Pinterest,USA,Peaking
+2025-06-14,Office Chair,new office chair collection,67,Navigational,Product-specific,YouTube,Canada,Declining
+2025-06-14,Dining Table,top dining table trends,67,Navigational,Branded,Pinterest,Canada,Stable
+2025-06-16,Running Shoes,running shoes for gym and track,73,Informational,Product-specific,Google,USA,Emerging
+2025-06-18,Office Chair,top-rated office chairs,70,Transactional,Long-tail,Amazon,Canada,Peaking
+2025-06-18,Kitchen Cabinet,budget kitchen cabinet ideas,87,Navigational,Branded,Bing,Global,Declining
+2025-06-19,Office Chair,best ergonomic office chairs,58,Navigational,Long-tail,Amazon,India,Emerging
+2025-06-17,Dining Table,best dining table designs,85,Informational,Product-specific,Pinterest,USA,Emerging
+2025-06-20,Office Chair,office chairs under 5000,76,Transactional,Product-specific,Bing,Canada,Peaking
+2025-06-14,TV Unit,wall-mount TV units,75,Navigational,Non-Branded,Bing,Global,Declining
+2025-06-20,TV Unit,wall-mount TV units,56,Informational,Product-specific,Amazon,Global,Peaking
+2025-06-19,Bed Frame,bed frames with storage,62,Transactional,Non-Branded,Pinterest,Canada,Stable
+2025-06-15,Sofa,L-shaped sofa styles,71,Transactional,Long-tail,Bing,USA,Peaking
+2025-06-17,TV Unit,trending TV unit styles,94,Informational,Branded,Pinterest,Global,Peaking
+2025-06-18,Running Shoes,top performance running shoes,81,Navigational,Branded,Google,USA,Emerging
+2025-06-19,Water Bottle,new water bottle collection,61,Informational,Non-Branded,Amazon,India,Peaking
+2025-06-15,Office Chair,office chairs under 5000,77,Transactional,Non-Branded,Bing,USA,Emerging
+2025-06-17,TV Unit,floating TV units,78,Navigational,Non-Branded,Google,UK,Peaking
+2025-06-16,Dining Table,dining table sets for 6-seaters,68,Navigational,Product-specific,YouTube,Canada,Peaking
+2025-06-20,Bed Frame,best bed frame designs,89,Informational,Branded,Amazon,Global,Emerging
+2025-06-16,Dining Table,dining table sets for 6-seaters,83,Navigational,Non-Branded,Pinterest,India,Stable
+2025-06-20,Bed Frame,wooden bed frames with drawers,80,Transactional,Long-tail,Amazon,UK,Peaking
+2025-06-15,Kitchen Cabinet,kitchen cabinet design trends,88,Navigational,Non-Branded,YouTube,UK,Peaking
+2025-06-15,Bed Frame,budget-friendly modular furniture,100,Navigational,Non-Branded,YouTube,USA,Stable
+2025-06-20,TV Unit,best TV unit designs,55,Navigational,Long-tail,Bing,UK,Emerging
+2025-06-19,Bookshelf,top bookshelf picks,64,Navigational,Long-tail,Pinterest,India,Emerging
+2025-06-20,Bookshelf,top bookshelf picks,82,Transactional,Long-tail,YouTube,UK,Emerging
+2025-06-20,Sofa,L-shaped sofa styles,62,Transactional,Long-tail,Bing,India,Stable
+2025-06-18,Dining Table,top dining table trends,71,Navigational,Long-tail,Google,India,Emerging
+2025-06-15,Dining Table,top dining table trends,74,Navigational,Branded,Bing,Canada,Peaking
+2025-06-19,Bookshelf,top bookshelf picks,91,Informational,Product-specific,Amazon,USA,Stable
+2025-06-14,Running Shoes,beginner running shoes,82,Transactional,Non-Branded,Amazon,India,Stable
+2025-06-18,Bed Frame,best bed frame designs,89,Informational,Long-tail,Google,UK,Stable
+2025-06-15,Wardrobe,space-saving wardrobe designs,83,Navigational,Non-Branded,Google,India,Stable
+2025-06-14,Sofa,latest modular sofa sets,76,Transactional,Product-specific,Pinterest,Global,Stable
+2025-06-18,Dining Table,best dining table designs,99,Navigational,Non-Branded,Google,USA,Stable
+2025-06-14,Bookshelf,latest bookshelf collection,92,Navigational,Branded,Google,India,Peaking
+2025-06-15,Dining Table,dining table sets for 6-seaters,51,Transactional,Product-specific,YouTube,UK,Stable
+2025-06-15,Bed Frame,budget-friendly modular furniture,64,Navigational,Non-Branded,Amazon,Canada,Peaking
+2025-06-18,Dining Table,affordable dining table styles,74,Informational,Product-specific,YouTube,UK,Stable
+2025-06-15,Dining Table,dining table sets for 6-seaters,95,Informational,Non-Branded,Google,India,Emerging
+2025-06-20,Sofa,affordable sofa designs,76,Informational,Long-tail,YouTube,UK,Peaking
+2025-06-20,Sofa,sofa beds for studio apartments,74,Navigational,Branded,Amazon,UK,Peaking
+2025-06-17,Kitchen Cabinet,latest kitchen cabinet styles,68,Transactional,Non-Branded,Amazon,Canada,Declining
+2025-06-20,Wardrobe,affordable wardrobe ideas,50,Navigational,Branded,Bing,Canada,Emerging
+2025-06-20,Wardrobe,space-saving wardrobe designs,90,Navigational,Branded,Amazon,USA,Declining
+2025-06-14,Wardrobe,mirror wardrobes for compact spaces,80,Transactional,Long-tail,Google,Canada,Declining
+2025-06-18,Bed Frame,wooden bed frames with drawers,85,Transactional,Long-tail,Bing,India,Peaking

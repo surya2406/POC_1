@@ -1,0 +1,7 @@
+agent_1
+__pycache__
+.env
+.env.dev
+.env.uat
+.env.prod
+venv/
