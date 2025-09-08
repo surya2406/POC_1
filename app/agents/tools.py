@@ -24,8 +24,8 @@ llm = openai
 llm_title_batch = openai.with_structured_output(SEOOutcomeBatch)
 llm_keyword_batch = openai.with_structured_output(TrendingKeywordBatch)
 llm_high_priority=openai.with_structured_output(HighPriorityBatch)
-memory = MemorySaver()
-config = RunnableConfig(configurable={"thread_id": "1"})
+# memory = MemorySaver()
+# config = RunnableConfig(configurable={"thread_id": "1"})
 
 
 @tool
@@ -71,16 +71,16 @@ def seo_db_stats() -> Dict[str, Any]:
         declining = status_counts.get("Declining", 0)
         positive = sum(status_counts.get(s, 0) for s in ["Emerging", "Peaking", "Rising"])
         print("Seo DB stats computed....\n")
-        return {
-            "output":"It fetched all seo titles and trending keywords from database.",
-            "source": "mysql",
-            "total_titles": total_titles,
-            "latest_title_update": latest_update.isoformat() if latest_update else None,
-            "trending_keywords_total": len(trends),
-            "declining_trends": declining,
-            "positive_trends": positive,
-            "trend_status_breakdown": status_counts,
-        }
+    return f"""
+        "output":"It fetched all seo titles and trending keywords from database.",
+        "source": "mysql",
+        "total_titles": {total_titles},
+        "latest_title_update": "{latest_update.isoformat() if latest_update else None}",
+        "trending_keywords_total": {len(trends)},
+        "declining_trends": {declining},
+        "positive_trends": {positive},
+        "trend_status_breakdown": {status_counts},"""
+        
 
 
 
@@ -418,8 +418,8 @@ def generate_title_improvements(titles_json: str) -> Dict[str, Any]:
         if not titles:
             return {"error": "No titles provided"}
 
-        titles = titles[:20]
-        structured = llm_title_batch.invoke({"titles": titles})
+        titles = titles[:5]
+        structured = llm_title_batch.invoke(f"""titles": {titles}""")
         return structured.dict()
 
     except Exception as e:
@@ -431,6 +431,8 @@ def generate_keyword_improvements(keywords_json: str) -> Dict[str, Any]:
     """Generate improved SEO keyword suggestions with structured output."""
     try:
         raw = keywords_json.strip()
+        base_items = []
+
         if raw.startswith('{'):
             parsed = json.loads(raw)
             base_items = parsed.get("keywords") or parsed.get("trending_keywords") or []
@@ -443,55 +445,22 @@ def generate_keyword_improvements(keywords_json: str) -> Dict[str, Any]:
         if not base_items:
             return {"error": "No keywords provided"}
 
-        # Limit to 25 items
         base_items = base_items[:25]
-
-        # Use structured LLM
-        structured = llm_keyword_batch.invoke({"trending_keywords": base_items})
+        structured = llm_keyword_batch.invoke(f"""trending_keywords: {base_items}""")
         return structured.dict()
 
     except Exception as e:
-        return {"error": f"keyword_generation_failed: {e}"}
-
+        return {"error": f"keyword_generation_failed: {str(e)}"}
 
 
 @tool
-def update_seo_outcomes_db(agent_output: dict) -> dict:
-    """Persist structured SEOOutcomeBatch data into `seo_outcomes`.
-
-    Expected Input:
-        {
-            "updates": [
-                {
-                    "Page_Url": str,
-                    "Original_Title": str | None,
-                    "Improved_Title": str | None,
-                    "Rationale": str | None,
-                    "Improvement_Score": float | None,
-                    "Issues_Found": str | None,
-                    "Recommendations": str | None,
-                    "Health_Score": float | None,
-                    "Created_At": datetime,
-                    "Updated_At": datetime
-                }
-            ],
-            "summary": {...}  # optional
-        }
-
-    Returns:
-        {"status": "success", "rows_inserted": int}
-        or {"status": "no_data", "rows_inserted": 0, "message": str}
-        or {"status": "error", "message": str}
-    """
+def update_seo_outcomes_db(updates: list, summary: dict = None) -> dict:
+    """Persist structured SEOOutcomeBatch data into `seo_outcomes`."""
     from sqlalchemy import insert
     from app.models.models import SeoOutcomes
     import json
     SessionLocal = get_sync_sessionmaker()
 
-    if not isinstance(agent_output, dict):
-        return {"status": "error", "message": "Input must be a structured dict"}
-
-    updates = agent_output.get("updates", [])
     if not updates:
         return {"status": "no_data", "rows_inserted": 0, "message": "No updates provided"}
 
@@ -502,8 +471,8 @@ def update_seo_outcomes_db(agent_output: dict) -> dict:
             for upd in updates:
                 rows.append({
                     "Page_Url": upd.get("Page_Url", "N/A"),
-                    "Original_Title": upd.get("Original_Title"),
-                    "Improved_Title": upd.get("Improved_Title"),
+                    "Original_Title": upd.get("Original_Title","N/A"),
+                    "Improved_Title": upd.get("Improved_Title",""),
                     "Rationale": upd.get("Rationale"),
                     "Improvement_Score": upd.get("Improvement_Score"),
                     "Issues_Found": upd.get("Issues_Found"),
@@ -512,64 +481,31 @@ def update_seo_outcomes_db(agent_output: dict) -> dict:
                     "Created_At": upd.get("Created_At", now),
                     "Updated_At": upd.get("Updated_At", now),
                 })
-
             session.execute(insert(SeoOutcomes), rows)
             session.commit()
-            return {"status": "success", "rows_inserted": len(rows)}
+            return {"status": "success", "rows_inserted_seo_outcome": len(rows)}
         except Exception as e:
             session.rollback()
             return {"status": "error", "message": str(e)}
-        finally:
-            session.close()
-
-
 
 @tool
-def update_trending_keywords_db(agent_output: dict) -> dict:
-    """Persist structured TrendingKeywordBatch data into `seo_trending_keywords_generated`.
-
-    Expected Input:
-        {
-            "trending_keywords": [
-                {
-                    "Category": str,
-                    "Keyword": str,
-                    "Search_Intent": str | None,
-                    "Trend_Score": float | None,
-                    "Keyword_Type": str | None,
-                    "Geo_Focus": str | None,
-                    "Rationale": str | None,
-                    "Platform_Source": str,
-                    "Status": str,
-                    "Created_At": datetime,
-                    "Updated_At": datetime
-                }
-            ],
-            "summary": {...},               # optional
-            "categories_analyzed": [...]    # optional
-        }
-
-    Returns:
-        {"status": "success", "rows_inserted": int}
-        or {"status": "no_data", "rows_inserted": 0, "message": str}
-        or {"status": "error", "message": str}
-    """
+def update_trending_keywords_db(agent_output: dict = None, **kwargs) -> dict:
+    """Persist structured TrendingKeywordBatch data into `seo_trending_keywords_generated`."""
     SessionLocal = get_sync_sessionmaker()
 
-    if not isinstance(agent_output, dict):
-        return {"status": "error", "message": "Input must be a structured dict"}
+    # Allow both flat and nested payloads
+    data = agent_output or kwargs
+    trending_keywords = data.get("trending_keywords", [])
 
-    keywords = agent_output.get("trending_keywords", [])
-    if not keywords:
+    if not trending_keywords:
         return {"status": "no_data", "rows_inserted": 0, "message": "No keywords provided"}
 
     with SessionLocal() as session:
         try:
             now = datetime.utcnow()
-            rows = []
-            for kw in keywords:
-                rows.append({
-                    "Category": kw.get("Category", "General"),
+            rows = [
+                {
+                    "Category": kw.get("Category"),
                     "Keyword": kw.get("Keyword"),
                     "Search_Intent": kw.get("Search_Intent"),
                     "Trend_Score": kw.get("Trend_Score"),
@@ -580,17 +516,16 @@ def update_trending_keywords_db(agent_output: dict) -> dict:
                     "Status": kw.get("Status", "pending"),
                     "Created_At": kw.get("Created_At", now),
                     "Updated_At": kw.get("Updated_At", now),
-                })
+                }
+                for kw in trending_keywords
+            ]
 
             session.execute(insert(SeoGeneratedKeywords), rows)
             session.commit()
-            return {"status": "success", "rows_inserted": len(rows)}
+            return {"status": "success", "rows_inserted_trending_keyword": len(rows)}
         except Exception as e:
             session.rollback()
             return {"status": "error", "message": str(e)}
-        finally:
-            session.close()
-
 
 @tool
 def analyze_high_priority_tasks(audit_data: str) -> dict:
@@ -605,99 +540,74 @@ def analyze_high_priority_tasks(audit_data: str) -> dict:
     """
 
     try:
-        result = llm_high_priority.invoke(audit_data)
+        result = llm_high_priority.invoke(f"{audit_data}")
         return result.dict()
     except Exception as e:
         return {"high_priority_tasks": [], "error": f"analysis_failed: {e}"}
 
 
 @tool
-def insert_high_priority_tasks(priority_data: dict | str) -> dict:
-    """Insert high priority SEO tasks into seo_high_priority table.
-
-    Input: Dict from analyze_high_priority_tasks or JSON string
-    Process:
-        - Parse priority_data for high_priority_tasks list
-        - Link to existing seo_outcomes records where possible
-        - Insert into seo_high_priority table
-    Output: {"status": "success|error", "tasks_inserted": int}
-    """
+def insert_high_priority_tasks(priority_data: dict | list | str) -> dict:
+    """Insert high priority SEO tasks into seo_high_priority table ONLY."""
     import json
+    from sqlalchemy import insert
     from app.models.models import SeoHighPriority
-    
+    from datetime import datetime
+    SessionLocal = get_sync_sessionmaker()
+
+    # Parse input if string
     if isinstance(priority_data, str):
         try:
-            # Fix Python boolean format to JSON format before parsing
             priority_data = priority_data.replace('True', 'true').replace('False', 'false')
             priority_data = json.loads(priority_data)
         except json.JSONDecodeError as e:
             return {
-                "status": "error", 
-                "message": f"Invalid JSON string: {str(e)}", 
-                "received_data": priority_data[:500] + "..." if len(priority_data) > 500 else priority_data
+                "status": "error",
+                "message": f"Invalid JSON: {str(e)}",
+                "received_data": priority_data[:200]
             }
-    
-    tasks = priority_data.get("high_priority_tasks", [])
+
+    # Normalize priority_data to a list of tasks
+    if isinstance(priority_data, dict):
+        tasks = priority_data.get("high_priority_tasks", [])
+    elif isinstance(priority_data, list):
+        tasks = priority_data
+    else:
+        return {"status": "error", "message": "priority_data must be dict, list, or valid JSON string"}
+
     if not tasks:
-        return {"status": "no_data", "tasks_inserted": 0, "message": "No high priority tasks to insert"}
-    
-    SessionLocal = get_sync_sessionmaker()
+        return {"status": "no_data", "tasks_inserted": 0, "message": "No tasks provided"}
+
     with SessionLocal() as session:
         try:
-            now = datetime.now()  # Declare now at the beginning
-            
-            # First, get existing seo_outcomes to link via Outcome_Id
-            outcomes_result = session.execute(select(SeoOutcomes))
-            existing_outcomes = {outcome.Page_Url: outcome.id for outcome in outcomes_result.scalars().all()}
+            now = datetime.utcnow()
+            rows, rejected = [], []
 
-            # For tasks without existing seo_outcomes, create placeholder records first
-            missing_outcomes = []
             for task in tasks:
-                page_url = task.get("Page_Url")
-                if page_url not in existing_outcomes:
-                    # Create a placeholder seo_outcomes record
-                    placeholder_data = {
-                        "Page_Url": page_url,
-                        "Original_Title": page_url,  # Use page URL as title placeholder
-                        "Improved_Title": None,
-                        "Rationale": "High priority task identified - needs SEO optimization",
-                        "Improvement_Score": None,
-                        "Issues_Found": "High priority task",
-                        "Recommendations": "Requires immediate SEO attention",
-                        "Health_Score": None,
-                        "Created_At": now,
-                        "Updated_At": now
-                    }
-                    missing_outcomes.append(placeholder_data)
-            
-            # Insert placeholder seo_outcomes records if needed
-            if missing_outcomes:
-                result = session.execute(insert(SeoOutcomes), missing_outcomes)
-                session.commit()
-                
-                # Refresh existing_outcomes mapping with new records
-                outcomes_result = session.execute(select(SeoOutcomes))
-                existing_outcomes = {outcome.Page_Url: outcome.id for outcome in outcomes_result.scalars().all()}
+                if not isinstance(task, dict):
+                    rejected.append({"reason": "invalid task format", "task": task})
+                    continue
 
-            rows = []
-            
-            for task in tasks:
                 page_url = task.get("Page_Url")
-                outcome_id = existing_outcomes.get(page_url)  # Should always exist now
-                
-                if outcome_id is None:
-                    continue  # Skip if somehow still no outcome_id
-                
-                # Handle trigger_details - convert to JSON string if it's not already
+                if not page_url:
+                    rejected.append({"reason": "missing Page_Url", "task": task})
+                    continue
+                outcome_result= session.execute(select(SeoOutcomes).where(SeoOutcomes.Page_Url==page_url))
+                outcomes=outcome_result.scalar_one_or_none()
+                if outcomes:
+                    outcome_id=outcomes.id
+                else:
+                    outcome_id=None
+
                 trigger_details = task.get("Trigger_Details", "")
                 if isinstance(trigger_details, dict):
                     trigger_details = json.dumps(trigger_details)
 
                 rows.append({
-                    "Outcome_Id": outcome_id,
                     "Page_Url": page_url,
+                    "outcome_id": outcome_id,
                     "Is_Outdated_Year": task.get("Is_Outdated_Year", False),
-                    "Is_Very_Low_Score": task.get("Is_Very_Low_Score", False), 
+                    "Is_Very_Low_Score": task.get("Is_Very_Low_Score", False),
                     "Is_Critical_Page": task.get("Is_Critical_Page", False),
                     "Priority_Score": task.get("Priority_Score", 70),
                     "Priority_Level": task.get("Priority_Level", "high"),
@@ -708,14 +618,17 @@ def insert_high_priority_tasks(priority_data: dict | str) -> dict:
                     "Updated_At": now
                 })
 
-            # Insert high priority records
             if rows:
                 session.execute(insert(SeoHighPriority), rows)
-            session.commit()
-            return {"status": "success", "tasks_inserted": len(rows)}
-            
+                session.commit()
+
+            return {
+                "status": "success",
+                "tasks_inserted": len(rows),
+                "rejected_tasks": len(rejected),
+                "rejected_sample": rejected[:3]
+            }
+
         except Exception as e:
             session.rollback()
             return {"status": "error", "message": f"Insert failed: {str(e)}"}
-        finally:
-            session.close()
