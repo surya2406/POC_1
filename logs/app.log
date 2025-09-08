@@ -1,0 +1,15 @@
+{"asctime": "2025-09-08 12:13:03,175", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 12:36:08,401", "levelname": "INFO", "name": "app", "message": "Error during shutdown: object NoneType can't be used in 'await' expression"}
+{"asctime": "2025-09-08 12:36:16,325", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 12:48:02,814", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 13:17:41,222", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 13:21:31,908", "levelname": "INFO", "name": "app", "message": "Error during shutdown: object NoneType can't be used in 'await' expression"}
+{"asctime": "2025-09-08 13:21:38,517", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 13:27:10,909", "levelname": "INFO", "name": "app", "message": "Error during shutdown: object NoneType can't be used in 'await' expression"}
+{"asctime": "2025-09-08 13:27:17,284", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 13:27:19,265", "levelname": "INFO", "name": "app", "message": "Error during shutdown: object NoneType can't be used in 'await' expression"}
+{"asctime": "2025-09-08 13:27:36,667", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 13:28:37,088", "levelname": "INFO", "name": "app", "message": "Error during shutdown: object NoneType can't be used in 'await' expression"}
+{"asctime": "2025-09-08 13:28:43,351", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 13:33:04,891", "levelname": "INFO", "name": "app", "message": "Error during startup: '_GeneratorContextManager' object does not support the asynchronous context manager protocol"}
+{"asctime": "2025-09-08 13:42:57,929", "levelname": "INFO", "name": "app", "message": "Error during shutdown: object NoneType can't be used in 'await' expression"}

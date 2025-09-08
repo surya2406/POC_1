@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>SEO Analyzer</title>
+		<link rel="stylesheet" href="./css/styles.css" />
+		<script>
+			// Optional: set API base URL here if different from default
+			// window.API_BASE_URL = "http://localhost:8000";
+		</script>
+	</head>
+	<body>
+		<main class="container">
+			<h1>SEO Analyzer</h1>
+
+			<form id="analyzeForm" class="panel" autocomplete="off">
+				<label for="queryInput" class="label">Enter your query</label>
+				<textarea id="queryInput" class="input" rows="6" placeholder="Type a product, topic, or phrase to analyze..."></textarea>
+
+				<div class="actions">
+					<button id="analyzeBtn" type="submit" class="btn primary">Analyze</button>
+					<span id="loading" class="loading" hidden>Analyzing…</span>
+				</div>
+			</form>
+
+			<section id="output" class="panel">
+				<h2>Result</h2>
+				<pre id="result" class="result"></pre>
+				<div id="error" class="error" hidden></div>
+			</section>
+		</main>
+
+		<script type="module" src="./js/main.js"></script>
+	</body>
+	</html>
+

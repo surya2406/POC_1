@@ -1,0 +1,37 @@
+{
+  "name": "seo-agent-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for SEO Agent Dashboard - A modern web interface for AI-powered SEO analysis",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 3000 --directory frontend",
+    "serve": "python -m http.server 8080 --directory frontend",
+    "demo": "start frontend/demo.html"
+  },
+  "keywords": [
+    "seo",
+    "frontend",
+    "dashboard",
+    "ai",
+    "analytics",
+    "web-interface"
+  ],
+  "author": "SEO Agent Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {},
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "homepage": "http://localhost:8000",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

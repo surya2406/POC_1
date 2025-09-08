@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO Agent Dashboard - Demo</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-robot"></i> SEO Agent Dashboard</h1>
+                <p>AI-Powered SEO Analysis & Optimization (Demo Mode)</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Demo Notice -->
+            <section class="demo-notice">
+                <div class="demo-card">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>Demo Mode</h3>
+                    <p>This is a demonstration of the frontend interface. To use the full functionality, please start the FastAPI backend server and access the app through <code>http://localhost:8000</code></p>
+                    <button id="demoBtn" class="btn-primary">
+                        <i class="fas fa-play"></i>
+                        Try Demo Analysis
+                    </button>
+                </div>
+            </section>
+
+            <!-- Query Input Section -->
+            <section class="query-section">
+                <div class="input-container">
+                    <label for="queryInput">Enter your SEO query:</label>
+                    <div class="input-group">
+                        <textarea 
+                            id="queryInput" 
+                            placeholder="e.g., Analyze SEO trends for e-commerce products, generate trending keywords for fashion retail..."
+                            rows="3"
+                        >Generate trending keywords for sustainable fashion e-commerce</textarea>
+                        <button id="analyzeBtn" class="btn-primary">
+                            <i class="fas fa-search"></i>
+                            Analyze
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Loading Section -->
+            <section id="loadingSection" class="loading-section hidden">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Analyzing your query...</p>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="results-section hidden">
+                <div class="results-header">
+                    <h2><i class="fas fa-chart-line"></i> Analysis Results</h2>
+                    <button id="exportBtn" class="btn-secondary">
+                        <i class="fas fa-download"></i>
+                        Export Results
+                    </button>
+                </div>
+                
+                <div class="results-content">
+                    <div class="result-card">
+                        <h3><i class="fas fa-lightbulb"></i> Analysis Summary</h3>
+                        <div id="analysisSummary" class="result-data">
+                            <!-- Analysis summary will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3><i class="fas fa-tags"></i> Generated Keywords</h3>
+                        <div id="keywordsContainer" class="keywords-container">
+                            <!-- Keywords will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3><i class="fas fa-chart-bar"></i> SEO Metrics</h3>
+                        <div id="metricsContainer" class="metrics-container">
+                            <!-- Metrics will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3><i class="fas fa-code"></i> Raw Response</h3>
+                        <div id="rawResponse" class="raw-response">
+                            <!-- Raw API response will be shown here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section id="errorSection" class="error-section hidden">
+                <div class="error-card">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error</h3>
+                    <p id="errorMessage">Something went wrong. Please try again.</p>
+                    <button id="retryBtn" class="btn-primary">
+                        <i class="fas fa-redo"></i>
+                        Retry
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Recent Queries Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-history"></i> Recent Queries</h3>
+                <button id="clearHistoryBtn" class="btn-clear">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            <div id="recentQueries" class="recent-queries">
+                <!-- Demo queries -->
+                <div class="recent-query">
+                    <div class="recent-query-text">Analyze competitor keywords for tech startup</div>
+                    <div class="recent-query-time">2h ago</div>
+                </div>
+                <div class="recent-query">
+                    <div class="recent-query-text">SEO optimization for online courses</div>
+                    <div class="recent-query-time">1d ago</div>
+                </div>
+                <div class="recent-query">
+                    <div class="recent-query-text">Local SEO for restaurant industry</div>
+                    <div class="recent-query-time">3d ago</div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Demo Script -->
+    <script>
+        // Demo functionality without backend
+        document.addEventListener('DOMContentLoaded', () => {
+            const demoBtn = document.getElementById('demoBtn');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const loadingSection = document.getElementById('loadingSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const analysisSummary = document.getElementById('analysisSummary');
+            const keywordsContainer = document.getElementById('keywordsContainer');
+            const metricsContainer = document.getElementById('metricsContainer');
+            const rawResponse = document.getElementById('rawResponse');
+            const toastContainer = document.getElementById('toastContainer');
+
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                toastContainer.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 100);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            function runDemo() {
+                // Hide all sections
+                document.querySelectorAll('.demo-notice, .results-section, .error-section').forEach(el => {
+                    el.classList.add('hidden');
+                });
+                
+                // Show loading
+                loadingSection.classList.remove('hidden');
+                analyzeBtn.disabled = true;
+                analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+
+                // Simulate API call
+                setTimeout(() => {
+                    loadingSection.classList.add('hidden');
+                    
+                    // Mock results
+                    const mockResult = {
+                        message: "SEO analysis completed successfully",
+                        result: "Based on the analysis of sustainable fashion e-commerce, here are the key insights: The market shows strong growth potential with increasing consumer awareness about environmental impact. Recommended focus areas include organic materials, ethical manufacturing, circular economy, and transparency in supply chain.",
+                        analysis_time: "2.3s",
+                        keywords_found: 12
+                    };
+
+                    // Populate results
+                    analysisSummary.innerHTML = `
+                        <div class="summary-content">
+                            <div class="summary-item">
+                                <strong>Status:</strong> ${mockResult.message}
+                            </div>
+                            <div class="summary-item">
+                                <strong>Analysis Result:</strong>
+                                <div class="result-text">${mockResult.result}</div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Mock keywords
+                    const keywords = ['sustainable fashion', 'eco-friendly', 'organic cotton', 'ethical manufacturing', 'circular economy', 'green fashion', 'sustainable materials', 'fair trade', 'carbon footprint', 'renewable resources'];
+                    keywordsContainer.innerHTML = '';
+                    keywords.forEach(keyword => {
+                        const tag = document.createElement('span');
+                        tag.className = 'keyword-tag';
+                        tag.textContent = keyword;
+                        keywordsContainer.appendChild(tag);
+                    });
+
+                    // Mock metrics
+                    metricsContainer.innerHTML = `
+                        <div class="metric-item">
+                            <i class="fas fa-clock" style="color: #667eea; margin-bottom: 10px; font-size: 1.5rem;"></i>
+                            <span class="metric-value">2.3s</span>
+                            <span class="metric-label">Analysis Time</span>
+                        </div>
+                        <div class="metric-item">
+                            <i class="fas fa-check-circle" style="color: #667eea; margin-bottom: 10px; font-size: 1.5rem;"></i>
+                            <span class="metric-value">Success</span>
+                            <span class="metric-label">Status</span>
+                        </div>
+                        <div class="metric-item">
+                            <i class="fas fa-tags" style="color: #667eea; margin-bottom: 10px; font-size: 1.5rem;"></i>
+                            <span class="metric-value">${keywords.length}</span>
+                            <span class="metric-label">Keywords Found</span>
+                        </div>
+                        <div class="metric-item">
+                            <i class="fas fa-database" style="color: #667eea; margin-bottom: 10px; font-size: 1.5rem;"></i>
+                            <span class="metric-value">2.1 KB</span>
+                            <span class="metric-label">Response Size</span>
+                        </div>
+                    `;
+
+                    // Show raw response
+                    rawResponse.textContent = JSON.stringify(mockResult, null, 2);
+
+                    // Show results
+                    resultsSection.classList.remove('hidden');
+                    resultsSection.classList.add('fade-in-up');
+                    
+                    // Reset button
+                    analyzeBtn.disabled = false;
+                    analyzeBtn.innerHTML = '<i class="fas fa-search"></i> Analyze';
+                    
+                    showToast('Demo analysis completed!', 'success');
+                }, 2000);
+            }
+
+            demoBtn.addEventListener('click', runDemo);
+            analyzeBtn.addEventListener('click', () => {
+                showToast('Demo mode: Start the FastAPI backend for full functionality', 'info');
+                runDemo();
+            });
+
+            exportBtn.addEventListener('click', () => {
+                showToast('Export functionality available with backend', 'info');
+            });
+
+            // Demo query clicks
+            document.querySelectorAll('.recent-query').forEach(query => {
+                query.addEventListener('click', () => {
+                    document.getElementById('queryInput').value = query.querySelector('.recent-query-text').textContent;
+                    showToast('Query loaded from history', 'success');
+                });
+            });
+
+            showToast('Demo mode loaded - Click "Try Demo Analysis" to see the interface in action', 'info');
+        });
+    </script>
+
+    <style>
+        .demo-notice {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .demo-card i {
+            font-size: 3rem;
+            color: #3182ce;
+            margin-bottom: 20px;
+        }
+
+        .demo-card h3 {
+            font-size: 1.5rem;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .demo-card p {
+            color: #718096;
+            margin-bottom: 25px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .demo-card code {
+            background: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #667eea;
+        }
+    </style>
+</body>
+</html>

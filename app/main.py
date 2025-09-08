@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.db.session import get_engine,Base
+from fastapi.staticfiles import StaticFiles
 from app.core.logging import app_logger
 from app.core.settings import get_settings
 from app.models.models import * 
@@ -22,12 +23,11 @@ async def lifespan(app: FastAPI):
     
     try:
         engine = get_engine()
-        print("Engine: ",engine)
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        print("Engine: ", engine)
+        # Synchronous SQLAlchemy engine usage
+        with engine.begin() as conn:
+            Base.metadata.create_all(bind=conn)
         print("Tables created successfully")
-        
-        
     except Exception as e:
         app_logger.info(f"Error during startup: {e}")
     
@@ -35,8 +35,8 @@ async def lifespan(app: FastAPI):
     
     try:
         engine = get_engine()
-        await engine.dispose()
-        
+        # Dispose sync engine
+        engine.dispose()
     except Exception as e:
         app_logger.info(f"Error during shutdown: {e}")
 
@@ -52,12 +52,14 @@ app.add_middleware(
 
 
 
-from app.core.settings import get_settings
 print("Settings loaded:", get_settings().model_dump())
 
 # Routers
 from app.api.v1.endpoints import seo_agent
 app.include_router(seo_agent.router)
+
+# Serve static frontend
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 
 

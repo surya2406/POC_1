@@ -88,22 +88,6 @@ def seo_db_stats() -> Dict[str, Any]:
 @tool
 def metadata_validator() -> Dict[str, Any]:
     """Validate quality/freshness of both SEO titles AND keywords.
-
-        Input: (ignored) – kept for agent tool signature compatibility.
-        
-        TITLE VALIDATION RULES:
-            - Incomplete: missing or <10 chars.
-            - Unnormalized: all upper/lower or repeated punctuation.
-            - Outdated: last updated year < current_year - 1.
-        
-        KEYWORD VALIDATION RULES:
-            - Stale Keywords: updated >6 months ago
-            - Low Score Keywords: trend_score < 50
-            - Missing Intent: search_intent is null/empty
-            - Declining Trends: trend_status = 'Declining'
-        
-        Health Score: 100 - (total_issue_count * 100 // total_records).
-        
         Output:
             {
                 "source": "mysql",
@@ -428,30 +412,56 @@ def generate_title_improvements(titles_json: str) -> Dict[str, Any]:
 
 @tool
 def generate_keyword_improvements(keywords_json: str) -> Dict[str, Any]:
-    """Generate improved SEO keyword suggestions with structured output."""
+    """Generate improved SEO keyword suggestions with structured output.
+    
+    Accepts either:
+    - Raw keyword list: ["kw1", "kw2", ...]
+    - Dict with {"keywords": [...]} or {"trending_keywords": [...]}
+    - Full metadata_validator output (extracts improvements_needed.keyword_improvements)
+    """
+    import json
     try:
         raw = keywords_json.strip()
         base_items = []
 
-        if raw.startswith('{'):
-            parsed = json.loads(raw)
-            base_items = parsed.get("keywords") or parsed.get("trending_keywords") or []
-        elif raw.startswith('['):
-            arr = json.loads(raw)
-            base_items = [{"Category": "General", "Keyword": k} for k in arr if isinstance(k, str)]
+        # Parse JSON input
+        parsed = None
+        if raw.startswith('{') or raw.startswith('['):
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                return {"error": "Invalid JSON provided"}
+
+        # Case 1: Full metadata_validator output
+        if isinstance(parsed, dict) and "improvements_needed" in parsed:
+            kw_list = parsed["improvements_needed"].get("keyword_improvements", [])
+            base_items = [{"Category": "General", "Keyword": kw} for kw in kw_list]
+
+        # Case 2: keywords/trending_keywords field
+        elif isinstance(parsed, dict):
+            kw_list = parsed.get("keywords") or parsed.get("trending_keywords") or []
+            base_items = [{"Category": "General", "Keyword": kw} for kw in kw_list]
+
+        # Case 3: Raw list
+        elif isinstance(parsed, list):
+            base_items = [{"Category": "General", "Keyword": kw} for kw in parsed if isinstance(kw, str)]
+
+        # Case 4: Comma-separated string
         else:
-            base_items = [{"Category": "General", "Keyword": k.strip()} for k in raw.split(',') if k.strip()]
+            base_items = [{"Category": "General", "Keyword": kw.strip()} for kw in raw.split(',') if kw.strip()]
 
         if not base_items:
             return {"error": "No keywords provided"}
 
-        base_items = base_items[:25]
-        structured = llm_keyword_batch.invoke(f"""trending_keywords: {base_items}""")
+        # Limit to 25 items
+        base_items = base_items[:10]
+
+        # Call LLM
+        structured = llm_keyword_batch.invoke(f"trending_keywords: {base_items}")
         return structured.dict()
 
     except Exception as e:
         return {"error": f"keyword_generation_failed: {str(e)}"}
-
 
 @tool
 def update_seo_outcomes_db(updates: list, summary: dict = None) -> dict:
