@@ -88,6 +88,22 @@ def seo_db_stats() -> Dict[str, Any]:
 @tool
 def metadata_validator() -> Dict[str, Any]:
     """Validate quality/freshness of both SEO titles AND keywords.
+
+        Input: (ignored) – kept for agent tool signature compatibility.
+        
+        TITLE VALIDATION RULES:
+            - Incomplete: missing or <10 chars.
+            - Unnormalized: all upper/lower or repeated punctuation.
+            - Outdated: last updated year < current_year - 1.
+        
+        KEYWORD VALIDATION RULES:
+            - Stale Keywords: updated >6 months ago
+            - Low Score Keywords: trend_score < 50
+            - Missing Intent: search_intent is null/empty
+            - Declining Trends: trend_status = 'Declining'
+        
+        Health Score: 100 - (total_issue_count * 100 // total_records).
+        
         Output:
             {
                 "source": "mysql",
@@ -412,56 +428,38 @@ def generate_title_improvements(titles_json: str) -> Dict[str, Any]:
 
 @tool
 def generate_keyword_improvements(keywords_json: str) -> Dict[str, Any]:
-    """Generate improved SEO keyword suggestions with structured output.
-    
-    Accepts either:
-    - Raw keyword list: ["kw1", "kw2", ...]
-    - Dict with {"keywords": [...]} or {"trending_keywords": [...]}
-    - Full metadata_validator output (extracts improvements_needed.keyword_improvements)
-    """
+    """Generate improved SEO keyword suggestions with structured output."""
     import json
     try:
         raw = keywords_json.strip()
+        print("RAW KEYWORDS INPUT ✅✅✅✅:", raw)
         base_items = []
 
-        # Parse JSON input
-        parsed = None
-        if raw.startswith('{') or raw.startswith('['):
-            try:
-                parsed = json.loads(raw)
-            except json.JSONDecodeError:
-                return {"error": "Invalid JSON provided"}
-
-        # Case 1: Full metadata_validator output
-        if isinstance(parsed, dict) and "improvements_needed" in parsed:
-            kw_list = parsed["improvements_needed"].get("keyword_improvements", [])
-            base_items = [{"Category": "General", "Keyword": kw} for kw in kw_list]
-
-        # Case 2: keywords/trending_keywords field
-        elif isinstance(parsed, dict):
-            kw_list = parsed.get("keywords") or parsed.get("trending_keywords") or []
-            base_items = [{"Category": "General", "Keyword": kw} for kw in kw_list]
-
-        # Case 3: Raw list
-        elif isinstance(parsed, list):
-            base_items = [{"Category": "General", "Keyword": kw} for kw in parsed if isinstance(kw, str)]
-
-        # Case 4: Comma-separated string
+        if raw.startswith('{'):
+            parsed = json.loads(raw)
+            base_items = parsed.get("keywords") or parsed.get("trending_keywords") or []
+        elif raw.startswith('['):
+            arr = json.loads(raw)
+            base_items = [{"Category": "General", "Keyword": k} for k in arr if isinstance(k, str)]
         else:
-            base_items = [{"Category": "General", "Keyword": kw.strip()} for kw in raw.split(',') if kw.strip()]
+            base_items = [{"Category": "General", "Keyword": k.strip()} for k in raw.split(',') if k.strip()]
 
         if not base_items:
             return {"error": "No keywords provided"}
 
-        # Limit to 25 items
-        base_items = base_items[:10]
+        base_items = base_items[:25]
+        print("PARSED KEYWORDS ✅✅✅✅:", base_items)
 
-        # Call LLM
+        # Get structured LLM response
         structured = llm_keyword_batch.invoke(f"trending_keywords: {base_items}")
-        return structured.dict()
+
+        # ✅ Make sure to return dict, not string
+        output = structured.dict()
+        return output if isinstance(output, dict) else json.loads(output)
 
     except Exception as e:
         return {"error": f"keyword_generation_failed: {str(e)}"}
+
 
 @tool
 def update_seo_outcomes_db(updates: list, summary: dict = None) -> dict:
@@ -498,16 +496,61 @@ def update_seo_outcomes_db(updates: list, summary: dict = None) -> dict:
             session.rollback()
             return {"status": "error", "message": str(e)}
 
+# @tool
+# def update_trending_keywords_db(agent_output: dict = None, **kwargs) -> dict:
+#     """Persist structured TrendingKeywordBatch data into `seo_trending_keywords_generated`."""
+#     SessionLocal = get_sync_sessionmaker()
+
+#     # Allow both flat and nested payloads
+#     data = agent_output or kwargs
+#     trending_keywords = data.get("trending_keywords", [])
+
+#     if not trending_keywords:
+#         return {"status": "no_data", "rows_inserted": 0, "message": "No keywords provided"}
+
+#     with SessionLocal() as session:
+#         try:
+#             now = datetime.utcnow()
+#             rows = [
+#                 {
+#                     "Category": kw.get("Category"),
+#                     "Keyword": kw.get("Keyword"),
+#                     "Search_Intent": kw.get("Search_Intent"),
+#                     "Trend_Score": kw.get("Trend_Score"),
+#                     "Keyword_Type": kw.get("Keyword_Type"),
+#                     "Geo_Focus": kw.get("Geo_Focus"),
+#                     "Rationale": kw.get("Rationale"),
+#                     "Platform_Source": kw.get("Platform_Source", "AI_Generated"),
+#                     "Status": kw.get("Status", "pending"),
+#                     "Created_At": kw.get("Created_At", now),
+#                     "Updated_At": kw.get("Updated_At", now),
+#                 }
+#                 for kw in trending_keywords
+#             ]
+
+#             session.execute(insert(SeoGeneratedKeywords), rows)
+#             session.commit()
+#             return {"status": "success", "rows_inserted_trending_keyword": len(rows)}
+#         except Exception as e:
+#             session.rollback()
+#             return {"status": "error", "message": str(e)}
+
+
 @tool
-def update_trending_keywords_db(agent_output: dict = None, **kwargs) -> dict:
+def update_trending_keywords_db(
+    agent_output: dict = None, trending_keywords: list = None, **kwargs
+) -> dict:
     """Persist structured TrendingKeywordBatch data into `seo_trending_keywords_generated`."""
+    from sqlalchemy import insert
+    from app.models.models import SeoGeneratedKeywords
+    from datetime import datetime
     SessionLocal = get_sync_sessionmaker()
 
-    # Allow both flat and nested payloads
-    data = agent_output or kwargs
-    trending_keywords = data.get("trending_keywords", [])
+    # Merge inputs
+    data = agent_output or {}
+    keywords = trending_keywords or data.get("trending_keywords") or kwargs.get("trending_keywords", [])
 
-    if not trending_keywords:
+    if not keywords:
         return {"status": "no_data", "rows_inserted": 0, "message": "No keywords provided"}
 
     with SessionLocal() as session:
@@ -516,26 +559,26 @@ def update_trending_keywords_db(agent_output: dict = None, **kwargs) -> dict:
             rows = [
                 {
                     "Category": kw.get("Category"),
-                    "Keyword": kw.get("Keyword"),
+                    "Generated_Keyword": kw.get("Keyword"),
                     "Search_Intent": kw.get("Search_Intent"),
                     "Trend_Score": kw.get("Trend_Score"),
                     "Keyword_Type": kw.get("Keyword_Type"),
                     "Geo_Focus": kw.get("Geo_Focus"),
                     "Rationale": kw.get("Rationale"),
-                    "Platform_Source": kw.get("Platform_Source", "AI_Generated"),
+                    "Generation_Source": kw.get("Platform_Source", "AI_Generated"),
                     "Status": kw.get("Status", "pending"),
+                    "Is_Active": True,
                     "Created_At": kw.get("Created_At", now),
                     "Updated_At": kw.get("Updated_At", now),
                 }
-                for kw in trending_keywords
+                for kw in keywords
             ]
-
-            session.execute(insert(SeoGeneratedKeywords), rows)
+            session.bulk_insert_mappings(SeoGeneratedKeywords, rows)
             session.commit()
             return {"status": "success", "rows_inserted_trending_keyword": len(rows)}
         except Exception as e:
             session.rollback()
-            return {"status": "error", "message": str(e)}
+            return {"status": "error", "message": f"Insert failed: {str(e)}"}
 
 @tool
 def analyze_high_priority_tasks(audit_data: str) -> dict:
@@ -602,20 +645,25 @@ def insert_high_priority_tasks(priority_data: dict | list | str) -> dict:
                 if not page_url:
                     rejected.append({"reason": "missing Page_Url", "task": task})
                     continue
-                outcome_result= session.execute(select(SeoOutcomes).where(SeoOutcomes.Page_Url==page_url))
-                outcomes=outcome_result.scalar_one_or_none()
+                outcome_result = session.execute(
+                    select(SeoOutcomes).where(SeoOutcomes.Page_Url == page_url)
+                )
+                outcomes = outcome_result.scalar_one_or_none()
                 if outcomes:
-                    outcome_id=outcomes.id
+                    outcome_id = outcomes.id
                 else:
-                    outcome_id=None
-
-                trigger_details = task.get("Trigger_Details", "")
+                    # Optionally create a new SeoOutcomes entry if missing
+                    new_outcome = SeoOutcomes(Page_Url=page_url)
+                    session.add(new_outcome)
+                    session.flush()  # Get ID without committing
+                    outcome_id = new_outcome.id
+                trigger_details = task.get("Trigger_Details", "") 
                 if isinstance(trigger_details, dict):
                     trigger_details = json.dumps(trigger_details)
 
                 rows.append({
+                    "Outcome_Id": outcome_id,  # 👈 REQUIRED
                     "Page_Url": page_url,
-                    "outcome_id": outcome_id,
                     "Is_Outdated_Year": task.get("Is_Outdated_Year", False),
                     "Is_Very_Low_Score": task.get("Is_Very_Low_Score", False),
                     "Is_Critical_Page": task.get("Is_Critical_Page", False),
